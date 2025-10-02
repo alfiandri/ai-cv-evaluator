@@ -3,24 +3,21 @@
 namespace App\Services;
 
 use App\Models\Document;
+use App\Support\TenantContext;
 
 class VectorStore
 {
     public function __construct(private LlmClientInterface $llm) {}
 
-
     public function upsert(string $type, string $content, array $meta = []): void
     {
         $embedding = $this->normalize($this->llm->embed($content));
-        Document::updateOrCreate([
-            'type' => $type,
-        ], [
-            'content' => $content,
-            'embedding' => $embedding,
-            'meta' => $meta,
-        ]);
+        $tenantId  = TenantContext::id();
+        Document::updateOrCreate(
+            ['type' => $type, 'tenant_id' => $tenantId],
+            ['content' => $content, 'embedding' => $embedding, 'meta' => $meta]
+        );
     }
-
 
     public function ensureRubricSeeded(): void
     {
@@ -35,7 +32,10 @@ class VectorStore
     public function search(string $query, ?string $type = null, int $k = 2): array
     {
         $q = $this->normalize($this->llm->embed($query));
-        $docs = Document::when($type, fn($qq) => $qq->where('type', $type))->get();
+        $tenantId = TenantContext::id();
+        $docs = Document::when($type, fn($qq) => $qq->where('type', $type))
+            ->when($tenantId, fn($qq) => $qq->where('tenant_id', $tenantId))
+            ->get();
         $scored = [];
         foreach ($docs as $d) {
             $score = $this->dot($q, $d->embedding ?? []);

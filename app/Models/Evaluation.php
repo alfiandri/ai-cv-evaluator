@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\Concerns\BelongsToTenant;
 
 class Evaluation extends Model
 {
-    use HasUuids;
+    use HasUuids, BelongsToTenant;
 
     protected $fillable = [
         'id',

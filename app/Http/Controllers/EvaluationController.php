@@ -22,6 +22,7 @@ class EvaluationController extends Controller
         $eval = Evaluation::create(array_merge($data, [
             'id' => $id,
             'status' => 'queued',
+            'user_id' => optional(auth()->user())->id,
         ]));
 
         dispatch(new EvaluateCandidateJob($eval->id));

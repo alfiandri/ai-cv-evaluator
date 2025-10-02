@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Support\TenantContext;
 
 class EvaluateCandidateJob implements ShouldQueue
 {
@@ -30,9 +31,9 @@ class EvaluateCandidateJob implements ShouldQueue
     public function handle(EvaluationPipeline $pipeline, VectorStore $vs): void
     {
         $eval = Evaluation::findOrFail($this->evaluationId);
+        TenantContext::set($eval->tenant_id); // restore tenant context in worker
         $eval->update(['status' => 'processing', 'error' => null]);
 
-        // Upsert/re-embed job context into vector store
         $vs->upsert('job_description', $eval->job_description, ['evaluation_id' => $eval->id]);
         $vs->upsert('study_case', $eval->study_case_brief, ['evaluation_id' => $eval->id]);
         $vs->ensureRubricSeeded();
