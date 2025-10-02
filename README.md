@@ -1,61 +1,119 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel AI Evaluation Service (CV & Project Scoring)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project implements a backend service that accepts a candidate’s **CV** and **Project Report**, compares them with a **Job Vacancy** and **Study Case Brief**, and returns a structured evaluation with:
 
-## About Laravel
+- **CV ↔ Job match rate** (0–1)
+- **Project score** (1–10) based on a standardized rubric
+- **Actionable feedback & summary**
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+It demonstrates **Laravel fundamentals + AI workflow** (prompt design, LLM chaining, RAG-like retrieval, resilience, async pipeline).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Features
 
-## Learning Laravel
+- **API**
+  - `POST /api/auth/token` → issue token
+  - `POST /api/upload` → upload CV & project report (txt/pdf/docx)
+  - `POST /api/evaluate` → enqueue evaluation pipeline; returns `{ id, status: "queued" }`
+  - `GET /api/result/{id}` → poll status: `queued | processing | completed | failed`
+- **Async Processing** via Laravel Queues (database driver by default)
+- **LLM Chaining** (OpenAI by default) with retry + backoff + validation
+- **Simple Vector Store** for RAG
+  - `documents` table stores content + embedding (JSON float array)
+  - Cosine similarity in PHP (fine for small corpus)
+- **Robust Text Extraction** from PDF (Smalot/pdfparser), DOCX (PhpOffice), TXT
+- **Determinism Controls:** temperature, schema validation & correction
+- **Failure Simulation:** randomly throw LLM errors to exercise retries
+- **Standardized Rubric** for CV & Project scoring
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Quick Start
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 1) Requirements
+- PHP 8.2+
+- Composer
+- SQLite/PostgreSQL/MySQL (SQLite easiest for demo)
 
-## Laravel Sponsors
+### 2) Install
+```bash
+composer create-project laravel/laravel ai-eval
+cd ai-eval
+```
+Install packages
+```
+composer install
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 3) Environment
+Create .env entries:
+```
+APP_NAME="AI Eval"
+APP_KEY=
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost
 
-### Premium Partners
+QUEUE_CONNECTION=database
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# DB (use SQLite for quick start)
+DB_CONNECTION=sqlite
+# touch database/database.sqlite
 
-## Contributing
+# LLM provider
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o-mini
+LLM_TEMPERATURE=0.2
+OPENAI_API_KEY=sk-...
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Embeddings model
+EMBEDDING_MODEL=text-embedding-3-small
+```
 
-## Code of Conduct
+Initialize DB & queue tables:
+```
+php artisan key:generate
+php artisan migrate
+php artisan queue:table && php artisan migrate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 4) Run
+```
+php artisan serve  # http://127.0.0.1:8000
+php artisan queue:work --tries=3
+```
+To get a demo tenant and user, issue an API token, and (optionally) seed vector docs. Prints curl examples.
+```
+php artisan app:bootstrap-dem
+```
 
-## Security Vulnerabilities
+### 5) Try the APIs
+Upload files (CV + Project Report):
+```
+curl -F "cv=@/path/cv.pdf" -F "project_report=@/path/report.docx" \
+  http://127.0.0.1:8000/api/upload
+# => {"cv_file_id":"...","project_file_id":"..."}
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Enqueue evaluation:
+```
+curl -X POST http://127.0.0.1:8000/api/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cv_file_id": "<uuid>",
+    "project_file_id": "<uuid>",
+    "job_description": "We seek a Backend Engineer experienced in Laravel, REST APIs, PostgreSQL, Docker, cloud (GCP/AWS), and exposure to LLMs/RAG.",
+    "study_case_brief": "Build a small service evaluating CV & project via LLM chaining, with retrieval and retries."
+  }'
+# => {"id":"<uuid>","status":"queued"}
+```
 
-## License
+Poll result:
+```
+curl http://127.0.0.1:8000/api/result/<uuid>
+# => {"id":"<uuid>","status":"processing"}
+# or completed => includes result payload
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+**API Contracts**
