@@ -25,14 +25,15 @@ class EvaluationController extends Controller
             'user_id' => optional(auth()->user())->id,
         ]));
 
-        dispatch(new EvaluateCandidateJob($eval->id));
+        dispatch(new EvaluateCandidateJob($id));
 
         return response()->json(['id' => $id, 'status' => 'queued']);
     }
 
     public function result(string $id)
     {
-        $eval = Evaluation::findOrFail($id);
+        $tenantId = request()->header('X-Tenant-ID');
+        $eval = Evaluation::where('tenant_id', $tenantId)->findOrFail($id);
         if ($eval->status !== 'completed') {
             return response()->json(['id' => $eval->id, 'status' => $eval->status, 'error' => $eval->error]);
         }

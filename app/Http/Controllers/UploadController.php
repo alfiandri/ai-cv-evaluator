@@ -16,9 +16,11 @@ class UploadController extends Controller
             'project_report' => 'required|file|max:20480',
         ]);
 
+        $tenantId = $request->header('X-Tenant-ID');
+
         $disk = config('filesystems.default', 'local');
 
-        $save = function ($file) use ($disk, $extractor) {
+        $save = function ($file) use ($disk, $extractor, $tenantId) {
             // 1) Store on the configured disk; keep relative path
             $path = Storage::disk($disk)->putFile('uploads', $file); // e.g. 'uploads/abc123.bin'
 
@@ -37,6 +39,7 @@ class UploadController extends Controller
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type'     => $mime,
                 'path'          => $path, // store relative; resolve with Storage later
+                'tenant_id'     => $tenantId,
             ]);
 
             // 5) Extract text (robust extractor handles pdf/docx/txt + fallbacks)

@@ -10,7 +10,7 @@ class UploadedFile extends Model
 {
     use HasUuids, BelongsToTenant;
 
-    protected $fillable = ['id', 'original_name', 'mime_type', 'path', 'text_extracted'];
+    protected $fillable = ['id', 'original_name', 'mime_type', 'path', 'text_extracted', 'tenant_id'];
     public $incrementing = false;
     protected $keyType = 'string';
 }

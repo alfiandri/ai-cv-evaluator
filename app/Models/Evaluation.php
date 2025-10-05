@@ -18,7 +18,9 @@ class Evaluation extends Model
         'study_case_brief',
         'status',
         'result_json',
-        'error'
+        'error',
+        'user_id',
+        'tenant_id',
     ];
     public $incrementing = false;
     protected $keyType = 'string';

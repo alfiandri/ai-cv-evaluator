@@ -38,6 +38,8 @@ class EvaluateCandidateJob implements ShouldQueue
         $vs->upsert('study_case', $eval->study_case_brief, ['evaluation_id' => $eval->id]);
         $vs->ensureRubricSeeded();
 
+        \Log::info('evaluation', ['eval' => $eval]);
+
         $cv = UploadedFile::findOrFail($eval->cv_file_id);
         $project = UploadedFile::findOrFail($eval->project_file_id);
 
