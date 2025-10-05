@@ -39,8 +39,11 @@ It demonstrates **Laravel fundamentals + AI workflow** (prompt design, LLM chain
 - SQLite/PostgreSQL/MySQL (SQLite easiest for demo)
 
 ### 2) Install
-Install packages
-```
+```bash
+composer create-project laravel/laravel ai-eval
+cd ai-eval
+
+# Install packages
 composer install
 ```
 
@@ -117,10 +120,23 @@ curl http://127.0.0.1:8000/api/result/<uuid>
 
 ## API Contracts
 
+### `POST /api/auth/token`
+**Body (JSON):**
+```json
+{
+  "email": "email",
+  "password": "password"
+}
+```
+
 ### `POST /api/upload`
 **Form-Data**  
 - `cv` (required): file (`txt` / `pdf` / `docx`)  
-- `project_report` (required): file (`txt` / `pdf` / `docx`)  
+- `project_report` (required): file (`txt` / `pdf` / `docx`) 
+
+**Headers**
+- `Authorization`: Bearer Token
+- `X-Tenant-ID`: Tenant ID
 
 **Response:**
 ```json
@@ -140,12 +156,21 @@ curl http://127.0.0.1:8000/api/result/<uuid>
   "study_case_brief": "text..."
 }
 ```
+
+**Headers**
+- `Authorization`: Bearer Token
+- `X-Tenant-ID`: Tenant ID
+
 **Response:**
 ```json
 { "id": "uuid", "status": "queued" }
 ```
 
 ### `GET /api/result/{id}`
+**Headers**
+- `Authorization`: Bearer Token
+- `X-Tenant-ID`: Tenant ID
+
 **Response:**
 ```json
 { "id": "uuid", "status": "queued" }
