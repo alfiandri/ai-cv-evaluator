@@ -9,6 +9,11 @@ use App\Jobs\EvaluateCandidateJob;
 
 class EvaluationController extends Controller
 {
+    /**
+     * @header Authorization
+     * @header X-Tenant-ID
+     * @header Content-Type application/xml
+     */
     public function evaluate(Request $request)
     {
         $data = $request->validate([
@@ -30,6 +35,11 @@ class EvaluationController extends Controller
         return response()->json(['id' => $id, 'status' => 'queued']);
     }
 
+    /**
+     * @header Authorization
+     * @header X-Tenant-ID
+     * @header Content-Type application/xml
+     */
     public function result(string $id)
     {
         $tenantId = request()->header('X-Tenant-ID');

@@ -9,6 +9,11 @@ use App\Services\TextExtractor;
 
 class UploadController extends Controller
 {
+    /**
+     * @header Authorization
+     * @header X-Tenant-ID
+     * @header Content-Type application/xml
+     */
     public function upload(Request $request, TextExtractor $extractor)
     {   
         $request->validate([
